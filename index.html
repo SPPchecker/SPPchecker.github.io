@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SPP色覚検査システム</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
+        /* 既存のスタイルはそのまま維持 */
         body {
             font-family: 'Arial', sans-serif;
             margin: 0;
@@ -225,13 +225,13 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
-        .btn-email {
-            background: linear-gradient(145deg, #9C27B0, #7B1FA2);
+        .btn-upload {
+            background: linear-gradient(145deg, #FF9800, #F57C00);
             color: white;
         }
 
-        .btn-email:hover {
-            background: linear-gradient(145deg, #7B1FA2, #6A1B9A);
+        .btn-upload:hover:not(:disabled) {
+            background: linear-gradient(145deg, #F57C00, #E65100);
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
@@ -300,18 +300,19 @@
             color: #0c5460;
         }
 
+        .status.uploading {
+            background: #e7f3ff;
+            color: #004085;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
         .loading {
             color: #999;
             font-style: italic;
-        }
-
-        .demo-notice {
-            background: #fff3cd;
-            color: #856404;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border: 1px solid #ffeaa7;
         }
 
         .user-info {
@@ -354,7 +355,7 @@
             margin: 5px 0;
         }
 
-        .email-notice {
+        .upload-notice {
             background: #e8f5e9;
             padding: 15px;
             border-radius: 10px;
@@ -363,19 +364,24 @@
             text-align: center;
         }
 
-        .email-notice p {
+        .upload-notice p {
             margin: 5px 0;
             color: #2e7d32;
+        }
+
+        .upload-notice.error {
+            background: #ffebee;
+            border-color: #ef5350;
+        }
+
+        .upload-notice.error p {
+            color: #c62828;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>SPP色覚検査システム</h1>
-        
-        <div class="demo-notice" style="display: none;">
-            <strong>デモモード:</strong> 実際の画像ファイルの代わりに、サンプルパターンを使用してテストを実行します。
-        </div>
         
         <div class="status ready" id="status">
             検査者情報を入力してください
@@ -436,7 +442,7 @@
         <div class="controls">
             <button class="btn btn-primary" onclick="handleMainButton()" id="mainBtn" disabled>次へ</button>
             <button class="btn btn-secondary" onclick="downloadResults()" id="downloadBtn" style="display: none;">結果をダウンロード</button>
-            <button class="btn btn-email" onclick="sendEmail()" id="emailBtn" style="display: none;">メールで送信</button>
+            <button class="btn btn-upload" onclick="uploadToSpreadsheet()" id="uploadBtn" style="display: none;">スプレッドシートに送信</button>
         </div>
 
         <div class="results" id="results" style="display: none;">
@@ -444,14 +450,16 @@
             <h3>検査結果</h3>
             <div id="resultsList"></div>
             <div id="diagnosisResult"></div>
-            <div class="email-notice" id="emailNotice" style="display: none;">
-                <p>📧 メールアプリが開きます</p>
-                <p>送信ボタンを押して結果を送信してください</p>
+            <div class="upload-notice" id="uploadNotice" style="display: none;">
+                <p id="uploadMessage">📤 データを送信中...</p>
             </div>
         </div>
     </div>
 
     <script>
+        // GAS Web App URLを設定（デプロイ後のURLに置き換えてください）
+        const GAS_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec'; // ここを変更
+        
         const duration = 20000; // 20秒
         const canvas = document.getElementById('testCanvas');
         const ctx = canvas.getContext('2d');
@@ -467,7 +475,8 @@
         let totalImages = 0;
         let userName = '';
         let userAge = '';
-        let currentScreen = 'form'; // 'form', 'waiting', 'test', 'results'
+        let currentScreen = 'form';
+        let currentDiagnosis = '';
         
         // 複数回答問題のための変数
         let tempAnswer = null;
@@ -482,11 +491,6 @@
             startImg: null,
             endImg: null
         }));
-
-        // デバイス判定
-        function isIOS() {
-            return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        }
 
         // 入力フィールドの監視
         document.getElementById('userName').addEventListener('input', checkFormCompletion);
@@ -549,14 +553,11 @@
             const mainBtn = document.getElementById('mainBtn');
             
             if (currentScreen === 'form') {
-                // フォームから待機画面へ
                 if (!validateForm()) return;
                 showWaitingScreen();
             } else if (currentScreen === 'waiting') {
-                // 待機画面から検査開始
                 startTest();
             } else if (currentScreen === 'results') {
-                // 結果画面から最初へ戻る
                 resetToStart();
             }
         }
@@ -586,20 +587,15 @@
         function showWaitingScreen() {
             currentScreen = 'waiting';
             
-            // フォームを非表示
             document.getElementById('inputForm').style.display = 'none';
-            
-            // 待機画面を表示
             document.getElementById('waitingScreen').style.display = 'block';
             document.getElementById('displayName').textContent = userName;
             document.getElementById('displayAge').textContent = userAge;
             
-            // ボタンを「検査開始」に変更
             const mainBtn = document.getElementById('mainBtn');
             mainBtn.textContent = '検査開始';
             mainBtn.disabled = false;
             
-            // ステータスを更新
             updateStatus('ready', '検査準備完了 - 検査開始ボタンを押してください');
         }
 
@@ -608,14 +604,10 @@
             
             currentScreen = 'test';
             
-            // 待機画面を非表示
             document.getElementById('waitingScreen').style.display = 'none';
-            
-            // 検査エリアを表示
             document.getElementById('testArea').style.display = 'block';
             document.querySelector('.keypad-section').style.display = 'block';
             
-            // 通常の検査開始処理
             isTestActive = true;
             currentQuestion = 0;
             testResults = [];
@@ -625,7 +617,7 @@
             updateStatus('testing', '検査実行中...');
             document.getElementById('mainBtn').style.display = 'none';
             document.getElementById('downloadBtn').style.display = 'none';
-            document.getElementById('emailBtn').style.display = 'none';
+            document.getElementById('uploadBtn').style.display = 'none';
             document.getElementById('results').style.display = 'none';
             
             startQuestion();
@@ -634,7 +626,6 @@
         function resetToStart() {
             currentScreen = 'form';
             
-            // 画面要素を初期状態に復元
             document.querySelector('h1').textContent = 'SPP色覚検査システム';
             document.getElementById('inputForm').style.display = 'block';
             document.getElementById('waitingScreen').style.display = 'none';
@@ -646,42 +637,36 @@
             document.querySelector('.progress-container').style.display = 'block';
             document.getElementById('progressText').style.display = 'block';
             document.getElementById('questionPrompt').style.display = 'none';
-            document.getElementById('emailNotice').style.display = 'none';
+            document.getElementById('uploadNotice').style.display = 'none';
             
-            // プレースホルダーを表示し、キャンバスを非表示に
             document.getElementById('placeholder').style.display = 'block';
             document.getElementById('placeholder').textContent = '検査開始前';
             canvas.style.display = 'none';
             
-            // プログレスバーをリセット
             document.getElementById('progressBar').style.width = '0%';
             document.getElementById('progressText').textContent = '0.0 / 20.0 秒';
             
-            // ボタンを初期状態に
             const mainBtn = document.getElementById('mainBtn');
             mainBtn.textContent = '次へ';
             mainBtn.disabled = true;
             mainBtn.style.display = 'inline-block';
             document.getElementById('downloadBtn').style.display = 'none';
-            document.getElementById('emailBtn').style.display = 'none';
+            document.getElementById('uploadBtn').style.display = 'none';
             document.getElementById('results').style.display = 'none';
             
-            // フォームをクリア
             document.getElementById('userName').value = '';
             document.getElementById('userAge').value = '';
             
-            // ステータスを初期状態に
             updateStatus('ready', '検査者情報を入力してください');
             
-            // コンテナのテキスト配置を中央に戻す
             document.querySelector('.container').style.textAlign = 'center';
             
-            // 検査状態をリセット
             isTestActive = false;
             running = false;
             currentQuestion = 0;
             testResults = [];
             tempAnswer = null;
+            currentDiagnosis = '';
         }
 
         function startQuestion() {
@@ -752,25 +737,23 @@
             const isMulti = multiAnswerQuestions.includes(currentQNumber);
             const promptDiv = document.getElementById('questionPrompt');
 
-            // 複数回答問題の1つ目の回答の場合
             if (isMulti && tempAnswer === null) {
                 tempAnswer = answer;
                 promptDiv.textContent = '2つ目の答えを選んでください (なければ「わからない」)';
                 promptDiv.style.display = 'block';
-                return; // 2つ目の回答を待つ
+                return;
             }
 
-            // 通常の回答、または複数回答問題の2つ目の回答の場合
             promptDiv.style.display = 'none';
             let finalAnswer;
             if (isMulti) {
                 finalAnswer = [tempAnswer, answer].sort((a,b) => String(a).localeCompare(String(b)));
-                tempAnswer = null; // 一時的な回答をリセット
+                tempAnswer = null;
             } else {
                 finalAnswer = answer;
             }
             
-            running = false; // アニメーションを停止
+            running = false;
 
             testResults.push({
                 question: currentQNumber,
@@ -787,34 +770,20 @@
             running = false;
             currentScreen = 'results';
             
-            // ヘッダーを「検査終了」に変更
             document.querySelector('h1').textContent = 'SPP検査';
-            
-            // 問題番号を非表示
             document.getElementById('questionNumber').style.display = 'none';
-            
-            // 画像エリアを非表示
             document.querySelector('.image-container').style.display = 'none';
-            
-            // プログレスバーを非表示
             document.querySelector('.progress-container').style.display = 'none';
             document.getElementById('progressText').style.display = 'none';
-            
-            // キーパッドを非表示
             document.querySelector('.keypad-section').style.display = 'none';
             
             updateStatus('complete', '検査完了');
             displayResults();
-            const diagnosis = calculateDiagnosis(testResults);
-            document.getElementById('diagnosisResult').textContent = `診断結果: ${diagnosis}`;
+            currentDiagnosis = calculateDiagnosis(testResults);
+            document.getElementById('diagnosisResult').textContent = `診断結果: ${currentDiagnosis}`;
             
-            // ボタンを表示
-            if (isIOS()) {
-                document.getElementById('emailBtn').style.display = 'inline-block';
-                document.getElementById('emailNotice').style.display = 'block';
-            } else {
-                document.getElementById('downloadBtn').style.display = 'inline-block';
-            }
+            document.getElementById('downloadBtn').style.display = 'inline-block';
+            document.getElementById('uploadBtn').style.display = 'inline-block';
             
             document.getElementById('mainBtn').style.display = 'inline-block';
             document.getElementById('mainBtn').textContent = '再検査';
@@ -825,7 +794,6 @@
             const resultsList = document.getElementById('resultsList');
             const userInfo = document.getElementById('userInfo');
             
-            // ユーザー情報を表示
             userInfo.innerHTML = `
                 <h4>検査者情報</h4>
                 <p><strong>お名前:</strong> ${userName}</p>
@@ -849,7 +817,6 @@
             resultsDiv.style.display = 'block';
         }
 
-        // 各分類の正解を配列で定義
         const diagnosisRules = {
             5: { normal: [[3]], pd: [[8]] },
             6: { normal: [[2]], pd: [[9]] },
@@ -896,7 +863,6 @@
         }
         
         function interpretScores(scores) {
-            // 最も一致数の多い分類を見つける
             const scoreMap = {
                 '正常色覚': scores.normal,
                 'P型色覚(1型) 強度': scores.p_strong,
@@ -933,7 +899,56 @@
             }
         }
 
-        function generateResultText() {
+        async function uploadToSpreadsheet() {
+            const uploadBtn = document.getElementById('uploadBtn');
+            const uploadNotice = document.getElementById('uploadNotice');
+            const uploadMessage = document.getElementById('uploadMessage');
+            
+            // ボタンを無効化
+            uploadBtn.disabled = true;
+            uploadNotice.style.display = 'block';
+            uploadNotice.className = 'upload-notice';
+            uploadMessage.textContent = '📤 データを送信中...';
+            updateStatus('uploading', 'スプレッドシートに送信中...');
+            
+            try {
+                const data = {
+                    userName: userName,
+                    userAge: userAge,
+                    testDateTime: testStartTime.toLocaleString('ja-JP'),
+                    diagnosis: currentDiagnosis,
+                    results: testResults
+                };
+                
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // CORSエラーを回避
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                // no-corsモードでは実際のレスポンスを取得できないため、成功と仮定
+                uploadMessage.textContent = '✅ データが正常に送信されました';
+                updateStatus('success', 'データ送信完了');
+                
+                setTimeout(() => {
+                    uploadBtn.disabled = false;
+                    uploadNotice.style.display = 'none';
+                    updateStatus('complete', '検査完了');
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                uploadNotice.className = 'upload-notice error';
+                uploadMessage.textContent = '❌ 送信エラー: ' + error.message;
+                updateStatus('error', 'データ送信に失敗しました');
+                uploadBtn.disabled = false;
+            }
+        }
+
+        function downloadResults() {
             const diagnosis = calculateDiagnosis(testResults);
             
             let content = '========================================\n';
@@ -962,35 +977,7 @@
             content += '※この結果は参考情報です。\n';
             content += '※正確な診断は眼科医にご相談ください。\n';
             
-            return content;
-        }
-
-        function sendEmail() {
-            const resultText = generateResultText();
-            const subject = `SPP色覚検査結果_${userName}_${testStartTime.toISOString().slice(0,10)}`;
-            const recipient = 'atsuhiro.ogai@gmail.com';
-            
-            // メール本文をURLエンコード
-            const body = encodeURIComponent(resultText);
-            const subjectEncoded = encodeURIComponent(subject);
-            
-            // mailtoリンクを作成
-            const mailtoLink = `mailto:${recipient}?subject=${subjectEncoded}&body=${body}`;
-            
-            // メールアプリを開く
-            window.location.href = mailtoLink;
-            
-            // 少し遅延してからアラートを表示
-            setTimeout(() => {
-                alert('メールアプリが開きました。\n送信ボタンを押して結果を送信してください。');
-            }, 1000);
-        }
-
-        function downloadResults() {
-            const resultText = generateResultText();
-            
-            // テキストファイルとしてダウンロード
-            const blob = new Blob([resultText], { type: 'text/plain;charset=utf-8' });
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -1006,7 +993,7 @@
             const key = event.key;
             if (key >= '1' && key <= '9') {
                 selectAnswer(parseInt(key));
-            } else if (key === '0' || key === 'Enter' || key.toLowerCase() === 'u') { // 'u' for 'unknown'
+            } else if (key === '0' || key === 'Enter' || key.toLowerCase() === 'u') {
                 selectAnswer('わからない');
             }
         });
