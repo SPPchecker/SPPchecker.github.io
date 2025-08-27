@@ -920,16 +920,21 @@
                     results: testResults
                 };
                 
+                console.log('送信データ:', data); // デバッグ用
+                
+                // mode: 'no-cors'を削除し、通常のfetchを使用
                 const response = await fetch(GAS_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // CORSエラーを回避
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'text/plain', // application/jsonからtext/plainに変更
                     },
                     body: JSON.stringify(data)
                 });
                 
-                // no-corsモードでは実際のレスポンスを取得できないため、成功と仮定
+                // レスポンスをテキストとして取得
+                const result = await response.text();
+                console.log('レスポンス:', result); // デバッグ用
+                
                 uploadMessage.textContent = '✅ データが正常に送信されました';
                 updateStatus('success', 'データ送信完了');
                 
@@ -942,9 +947,16 @@
             } catch (error) {
                 console.error('Upload error:', error);
                 uploadNotice.className = 'upload-notice error';
-                uploadMessage.textContent = '❌ 送信エラー: ' + error.message;
+                uploadMessage.textContent = '❌ 送信エラー: ブラウザのコンソールを確認してください';
                 updateStatus('error', 'データ送信に失敗しました');
                 uploadBtn.disabled = false;
+                
+                // より詳細なエラー情報をコンソールに出力
+                console.error('詳細なエラー情報:', {
+                    message: error.message,
+                    stack: error.stack,
+                    GAS_URL: GAS_URL
+                });
             }
         }
 
