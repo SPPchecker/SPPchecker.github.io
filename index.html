@@ -484,11 +484,6 @@
 
         const testData = Array.from({length: 24}, (_, i) => {
             let imageNumber = i + 1;
-            // 15問目以降の画像番号を調整（同じ画像を2回使用）
-            if (i >= 15) {
-                // 15-16: 元の15番画像、17-18: 元の16番画像、19-20: 元の17番画像、21-22: 元の18番画像、23-24: 元の19番画像
-                imageNumber = Math.floor((i - 15) / 2) + 15;
-            }
             return {
                 question: i + 1,
                 startImage: `No.${String(imageNumber).padStart(2, '0')} 数字なし1.png`,
