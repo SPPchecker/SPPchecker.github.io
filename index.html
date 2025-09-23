@@ -410,7 +410,7 @@
         </div>
 
         <div class="test-area" id="testArea">
-            <div class="question-number" id="questionNumber">問題 1/19</div>
+            <div class="question-number" id="questionNumber">問題 1/24</div>
             
             <div class="image-container">
                 <div class="placeholder" id="placeholder">検査開始前</div>
@@ -458,7 +458,7 @@
 
     <script>
         // GAS Web App URLを設定（デプロイ後のURLに置き換えてください）
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbytzFNxqt_ODt2-puxIRzpWbdHysnYcx8rJTgTO6xqc5f4FAnhbaSggZwtYkS1xMiDK/exec'; // ここを変更
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzkwF1DWXrD-1sLwvzf3asFZFGuzyzqTZsDhkU4nP8b8GIC-PZatsnPd2nQLkaH8O8v/exec'; // ここを変更
         
         const duration = 20000; // 20秒
         const canvas = document.getElementById('testCanvas');
@@ -478,19 +478,22 @@
         let currentScreen = 'form';
         let currentDiagnosis = '';
         
-        // 複数回答問題のための変数
+        // 複数回答問題のための変数（15-19問目は分割されるため削除）
         let tempAnswer = null;
-        const multiAnswerQuestions = [11, 15, 16, 17, 18, 19];
+        const multiAnswerQuestions = [];
 
-        const testData = Array.from({length: 19}, (_, i) => ({
-            question: i + 1,
-            startImage: `No.${String(i + 1).padStart(2, '0')} 数字なし1.png`,
-            endImage: `No.${String(i + 1).padStart(2, '0')} 数字あり1.png`,
-            answer: null,
-            responseTime: null,
-            startImg: null,
-            endImg: null
-        }));
+        const testData = Array.from({length: 24}, (_, i) => {
+            let imageNumber = i + 1;
+            return {
+                question: i + 1,
+                startImage: `No.${String(imageNumber).padStart(2, '0')} 数字なし1.png`,
+                endImage: `No.${String(imageNumber).padStart(2, '0')} 数字あり1.png`,
+                answer: null,
+                responseTime: null,
+                startImg: null,
+                endImg: null
+            };
+        });
 
         // 入力フィールドの監視
         document.getElementById('userName').addEventListener('input', checkFormCompletion);
@@ -515,8 +518,11 @@
             updateStatus('loading', `画像を読み込み中... (0/${totalImages})`);
             let hasError = false;
 
+            console.log('===== 画像の読み込み開始 =====');
             testData.forEach((data, index) => {
                 if (hasError) return;
+                console.log(`問題 ${index + 1}: ${data.startImage}, ${data.endImage}`);
+                
                 data.startImg = new Image();
                 data.startImg.onload = () => { if (!hasError) imageLoaded(); };
                 data.startImg.onerror = () => { if (!hasError) imageError(data.startImage); };
@@ -527,17 +533,20 @@
                 data.endImg.onerror = () => { if (!hasError) imageError(data.endImage); };
                 data.endImg.src = data.endImage;
             });
+            console.log('===== 画像リスト表示完了 =====');
             
             function imageLoaded() {
                 imagesLoaded++;
                 updateStatus('loading', `画像を読み込み中... (${imagesLoaded}/${totalImages})`);
                 if (imagesLoaded === totalImages) {
+                    console.log(`✅ 全画像の読み込み完了: ${imagesLoaded}/${totalImages}`);
                     updateStatus('ready', '検査者情報を入力してください');
                 }
             }
 
             function imageError(filename) {
                 hasError = true;
+                console.error(`❌ 画像読み込みエラー: "${filename}"`);
                 updateStatus('error', `エラー: 画像 "${filename}" が見つかりません。`);
                 document.getElementById('mainBtn').disabled = true;
             }
@@ -604,6 +613,12 @@
             
             currentScreen = 'test';
             
+            console.log('🚀 ====================');
+            console.log('🚀 検査開始');
+            console.log(`🚀 検査者: ${userName} (${userAge}歳)`);
+            console.log(`🚀 開始時刻: ${new Date().toLocaleString('ja-JP')}`);
+            console.log('🚀 ====================');
+            
             document.getElementById('waitingScreen').style.display = 'none';
             document.getElementById('testArea').style.display = 'block';
             document.querySelector('.keypad-section').style.display = 'block';
@@ -632,7 +647,7 @@
             document.getElementById('testArea').style.display = 'none';
             document.querySelector('.keypad-section').style.display = 'none';
             document.getElementById('questionNumber').style.display = 'block';
-            document.getElementById('questionNumber').textContent = '問題 1/19';
+            document.getElementById('questionNumber').textContent = '問題 1/24';
             document.querySelector('.image-container').style.display = 'flex';
             document.querySelector('.progress-container').style.display = 'block';
             document.getElementById('progressText').style.display = 'block';
@@ -670,7 +685,7 @@
         }
 
         function startQuestion() {
-            if (currentQuestion >= 19) {
+            if (currentQuestion >= 24) {
                 completeTest();
                 return;
             }
@@ -679,7 +694,13 @@
             questionStartTime = new Date();
             
             const questionData = testData[currentQuestion];
-            document.getElementById('questionNumber').textContent = `問題 ${currentQuestion + 1}/19`;
+            document.getElementById('questionNumber').textContent = `問題 ${currentQuestion + 1}/24`;
+            
+            // コンソールに画像ファイル名を表示
+            console.log(`========== 問題 ${currentQuestion + 1} ==========`);
+            console.log(`開始画像: ${questionData.startImage}`);
+            console.log(`終了画像: ${questionData.endImage}`);
+            console.log(`================================`);
             
             document.getElementById('placeholder').style.display = 'none';
             canvas.style.display = 'block';
@@ -755,6 +776,9 @@
             
             running = false;
 
+            // 回答をコンソールに記録
+            console.log(`📝 問題 ${currentQNumber}: 回答 = ${Array.isArray(finalAnswer) ? finalAnswer.join(', ') : finalAnswer}`);
+
             testResults.push({
                 question: currentQNumber,
                 answer: finalAnswer,
@@ -770,6 +794,11 @@
             running = false;
             currentScreen = 'results';
             
+            console.log('✅ ====================');
+            console.log('✅ 検査完了');
+            console.log(`✅ 終了時刻: ${new Date().toLocaleString('ja-JP')}`);
+            console.log('✅ ====================');
+            
             document.querySelector('h1').textContent = 'SPP検査';
             document.getElementById('questionNumber').style.display = 'none';
             document.querySelector('.image-container').style.display = 'none';
@@ -780,7 +809,26 @@
             updateStatus('complete', '検査完了');
             displayResults();
             currentDiagnosis = calculateDiagnosis(testResults);
-            document.getElementById('diagnosisResult').textContent = `診断結果: ${currentDiagnosis}`;
+            const researchData = checkResearchAnswers(testResults);
+            
+            // 診断結果をコンソールに表示
+            console.log('📊 ====================');
+            console.log('📊 診断結果:', currentDiagnosis);
+            console.log('📊 ====================');
+            document.getElementById('diagnosisResult').innerHTML = `
+                <div style="margin-top: 20px; padding: 20px; background: #f0f8ff; border-radius: 10px;">
+                    <h3 style="color: #1565C0; margin-bottom: 10px;">診断結果</h3>
+                    <p style="font-size: 1.3em; font-weight: bold; color: ${currentDiagnosis === '正常色覚' ? '#4CAF50' : '#FF6B6B'};">
+                        ${currentDiagnosis}
+                    </p>
+                    <p style="color: #666; margin-top: 10px;">
+                        ※この診断は問題5〜14の正解数（8問以上で正常）に基づいています。
+                    </p>
+                    <p style="color: #666;">
+                        ※問題15〜24は研究用データとして記録されますが、診断には使用されません。
+                    </p>
+                </div>
+            `;
             
             document.getElementById('downloadBtn').style.display = 'inline-block';
             document.getElementById('uploadBtn').style.display = 'inline-block';
@@ -824,79 +872,86 @@
             8: { normal: [[7]], pd: [[4]] },
             9: { normal: [[8]], pd: [[7]] },
             10: { normal: [[4]], pd: [[3], ['わからない']] },
-            11: { normal: [[2, 4]], pd: [[4, 'わからない']] },
+            11: { normal: [[3]], pd: [[8]] },
             12: { normal: [[7]], pd: [[5], ['わからない']] },
             13: { normal: [[8]], pd: [['わからない']] },
             14: { normal: [[3]], pd: [[6], ['わからない']] },
-            15: { normal: [[3, 8]], p_weak: [[3, 8]], p_strong: [[8]], d_weak: [[3, 8]], d_strong: [[3]] },
-            16: { normal: [[5, 7]], p_weak: [[5, 7]], d_weak: [[5, 7]], p_strong: [[5], ['わからない']], d_strong: [[7], ['わからない']] },
-            17: { normal: [[4, 8]], p_weak: [[4, 8]], d_weak: [[4, 8]], p_strong: [[4], ['わからない']], d_strong: [[8], ['わからない']] },
-            18: { normal: [[4, 9]], p_weak: [[4, 9], ['わからない']], d_weak: [[4, 9], ['わからない']], p_strong: [['わからない']], d_strong: [['わからない']] },
-            19: { normal: [[3, 5]], p_weak: [[3, 5]], d_weak: [[3, 5]], p_strong: [[3], ['わからない']], d_strong: [[5], ['わからない']] }
+            // 15-24問目は診断には使用しないが、正解を記録する（研究用）
+            15: { correct: [[8]] },
+            16: { correct: [[3]] },
+            17: { correct: [[5]] },
+            18: { correct: [[7]] },
+            19: { correct: [[4]] },
+            20: { correct: [[8]] },
+            21: { correct: [[9]] },
+            22: { correct: [[4]] },
+            23: { correct: [[3]] },
+            24: { correct: [[5]] }
         };
 
         function calculateDiagnosis(results) {
-            let scores = { normal: 0, pd: 0, p_weak: 0, p_strong: 0, d_weak: 0, d_strong: 0, mistake: 0 };
+            // 新しい診断ロジック：問題5-14の正解数で判定
+            let correctCount = 0;
             
             results.forEach(result => {
                 const q = result.question;
-                if (q < 5 || !diagnosisRules[q]) return;
-
-                const userAnswer = Array.isArray(result.answer) ? [...result.answer] : [result.answer];
-                userAnswer.sort((a,b) => String(a).localeCompare(String(b)));
-                const userAnswerJSON = JSON.stringify(userAnswer);
-                
-                let isMatch = false;
-                for (const type in diagnosisRules[q]) {
-                    const validAnswers = diagnosisRules[q][type];
-                    for (const valid of validAnswers) {
-                        const sortedValid = [...valid].sort((a,b) => String(a).localeCompare(String(b)));
-                        if (userAnswerJSON === JSON.stringify(sortedValid)) {
-                            scores[type]++;
-                            isMatch = true;
+                // 問題5-14のみを診断対象とする
+                if (q >= 5 && q <= 14) {
+                    const userAnswer = Array.isArray(result.answer) ? [...result.answer] : [result.answer];
+                    userAnswer.sort((a,b) => String(a).localeCompare(String(b)));
+                    const userAnswerJSON = JSON.stringify(userAnswer);
+                    
+                    // 各問題の正常色覚の正解をチェック
+                    if (diagnosisRules[q] && diagnosisRules[q].normal) {
+                        const validAnswers = diagnosisRules[q].normal;
+                        for (const valid of validAnswers) {
+                            const sortedValid = [...valid].sort((a,b) => String(a).localeCompare(String(b)));
+                            if (userAnswerJSON === JSON.stringify(sortedValid)) {
+                                correctCount++;
+                                break;
+                            }
                         }
                     }
                 }
-                if (!isMatch) scores.mistake++;
             });
-            return interpretScores(scores);
+            
+            // 8問以上正解で正常色覚、それ以外は色覚異常の疑い
+            if (correctCount >= 8) {
+                return "正常色覚";
+            } else {
+                return "色覚異常の疑いがあります";
+            }
         }
         
-        function interpretScores(scores) {
-            const scoreMap = {
-                '正常色覚': scores.normal,
-                'P型色覚(1型) 強度': scores.p_strong,
-                'D型色覚(2型) 強度': scores.d_strong,
-                'P型色覚(1型) 弱度': scores.p_weak,
-                'D型色覚(2型) 弱度': scores.d_weak,
-                'PD型': scores.pd
-            };
-
-            let maxScore = 0;
-            for(const type in scoreMap) {
-                if (scoreMap[type] > maxScore) {
-                    maxScore = scoreMap[type];
+        // 研究用データ：15-24問目の正解判定（診断には使用しない）
+        function checkResearchAnswers(results) {
+            const researchResults = [];
+            results.forEach(result => {
+                const q = result.question;
+                if (q >= 15 && q <= 24) {
+                    const userAnswer = Array.isArray(result.answer) ? [...result.answer] : [result.answer];
+                    const userAnswerStr = userAnswer.join(',');
+                    let isCorrect = false;
+                    
+                    if (diagnosisRules[q] && diagnosisRules[q].correct) {
+                        const correctAnswers = diagnosisRules[q].correct;
+                        for (const correct of correctAnswers) {
+                            if (userAnswerStr === correct.join(',')) {
+                                isCorrect = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    researchResults.push({
+                        question: q,
+                        answer: userAnswerStr,
+                        correct: isCorrect,
+                        responseTime: result.responseTime
+                    });
                 }
-            }
-
-            if (maxScore === 0 && scores.mistake > 5) {
-                return "間違いが多いため判定不能";
-            }
-
-            const topTypes = [];
-            for(const type in scoreMap) {
-                if (scoreMap[type] === maxScore) {
-                    topTypes.push(type);
-                }
-            }
-
-            if (topTypes.includes('正常色覚') && topTypes.length === 1) {
-                 return "正常色覚の可能性が高いです";
-            } else if (topTypes.length > 0 && !topTypes.includes('正常色覚')) {
-                return `${topTypes.join('、または')}の可能性があります`;
-            } else {
-                return "判定不能 (複数のタイプに一致)";
-            }
+            });
+            return researchResults;
         }
 
         async function uploadToSpreadsheet() {
@@ -973,7 +1028,8 @@
             content += `検査日時: ${testStartTime.toLocaleString('ja-JP')}\n\n`;
             
             content += '【診断結果】\n';
-            content += `${diagnosis}\n\n`;
+            content += `${diagnosis}\n`;
+            content += `（問題5-14の正解数に基づく判定）\n\n`;
             
             content += '【回答詳細】\n';
             content += '----------------------------------------\n';
