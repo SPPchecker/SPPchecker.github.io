@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPP色覚検査システム</title>
+    <style>
+        /* 既存のスタイルはそのまま維持 */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .input-form {
+            margin: 30px auto;
+            max-width: 400px;
+            text-align: left;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+            font-size: 1.1em;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .test-area {
+            margin: 30px 0;
+            display: none;
+        }
+
+        .question-number {
+            font-size: 1.5em;
+            color: #666;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .question-prompt {
+            display: none;
+            color: #1565C0;
+            font-weight: bold;
+            margin-bottom: 15px;
+            min-height: 30px;
+            font-size: 1.1em;
+            white-space: nowrap;
+        }
+
+        .image-container {
+            margin: 0 auto 20px;
+            border: 3px solid #ddd;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #testCanvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .placeholder {
+            color: #999;
+            font-size: 1.2em;
+            padding: 150px 0;
+        }
+
+        .progress-container {
+            margin: 20px 0;
+            background: #f0f0f0;
+            border-radius: 25px;
+            padding: 5px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .progress-bar {
+            height: 20px;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            border-radius: 20px;
+            transition: width 0.1s ease;
+            width: 0%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .progress-text {
+            margin-top: 10px;
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        .keypad-section {
+            margin: 30px auto;
+            max-width: 400px;
+            display: none;
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        .key {
+            padding: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(145deg, #f0f0f0, #e0e0e0);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .key:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .key:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .key.unknown {
+            grid-column: span 3;
+            background: linear-gradient(145deg, #ff6b6b, #ff5252);
+            color: white;
+        }
+
+        .key.unknown:hover {
+            background: linear-gradient(145deg, #ff5252, #ff4444);
+        }
+
+        .controls {
+            margin: 30px 0;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(145deg, #45a049, #3d8b40);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(145deg, #2196F3, #1976D2);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(145deg, #1976D2, #1565C0);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-upload {
+            background: linear-gradient(145deg, #FF9800, #F57C00);
+            color: white;
+        }
+
+        .btn-upload:hover:not(:disabled) {
+            background: linear-gradient(145deg, #F57C00, #E65100);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .results {
+            margin-top: 30px;
+            text-align: left;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        
+        #diagnosisResult {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #e3f2fd;
+            border: 1px solid #90caf9;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .status.ready {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.testing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.complete {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status.uploading {
+            background: #e7f3ff;
+            color: #004085;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .loading {
+            color: #999;
+            font-style: italic;
+        }
+
+        .user-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f0f8ff;
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        .user-info h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .user-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .waiting-screen {
+            display: none;
+            margin: 30px 0;
+        }
+
+        .waiting-info {
+            background: #f0f8ff;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .waiting-info h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .waiting-info p {
+            color: #666;
+            margin: 5px 0;
+        }
+
+        .upload-notice {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 1px solid #a5d6a7;
+            text-align: center;
+        }
+
+        .upload-notice p {
+            margin: 5px 0;
+            color: #2e7d32;
+        }
+
+        .upload-notice.error {
+            background: #ffebee;
+            border-color: #ef5350;
+        }
+
+        .upload-notice.error p {
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SPP色覚検査システム</h1>
+        
+        <div class="status ready" id="status">
+            検査者情報を入力してください
+        </div>
+
+        <div class="input-form" id="inputForm">
+            <div class="form-group">
+                <label for="userName">お名前</label>
+                <input type="text" id="userName" placeholder="山田 太郎" required>
+            </div>
+            <div class="form-group">
+                <label for="userAge">年齢</label>
+                <input type="number" id="userAge" placeholder="25" min="1" max="120" required>
+            </div>
+        </div>
+
+        <div class="waiting-screen" id="waitingScreen">
+            <div class="waiting-info">
+                <h3>検査者情報</h3>
+                <p><strong>お名前:</strong> <span id="displayName"></span></p>
+                <p><strong>年齢:</strong> <span id="displayAge"></span>歳</p>
+            </div>
+            <div class="image-container">
+                <div class="placeholder">検査開始ボタンを押してください</div>
+            </div>
+        </div>
+
+        <div class="test-area" id="testArea">
+            <div class="question-number" id="questionNumber">問題 1/24</div>
+            
+            <div class="image-container">
+                <div class="placeholder" id="placeholder">検査開始前</div>
+                <canvas id="testCanvas" width="450" height="450" style="display: none;"></canvas>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText">0.0 / 20.0 秒</div>
+
+            <div class="keypad-section">
+                <div class="question-prompt" id="questionPrompt"></div>
+                <div class="keypad">
+                    <button class="key" onclick="selectAnswer(1)">1</button>
+                    <button class="key" onclick="selectAnswer(2)">2</button>
+                    <button class="key" onclick="selectAnswer(3)">3</button>
+                    <button class="key" onclick="selectAnswer(4)">4</button>
+                    <button class="key" onclick="selectAnswer(5)">5</button>
+                    <button class="key" onclick="selectAnswer(6)">6</button>
+                    <button class="key" onclick="selectAnswer(7)">7</button>
+                    <button class="key" onclick="selectAnswer(8)">8</button>
+                    <button class="key" onclick="selectAnswer(9)">9</button>
+                    <button class="key unknown" onclick="selectAnswer('わからない')">わからない</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="handleMainButton()" id="mainBtn" disabled>次へ</button>
+            <button class="btn btn-secondary" onclick="downloadResults()" id="downloadBtn" style="display: none;">結果をダウンロード</button>
+            <button class="btn btn-upload" onclick="uploadToSpreadsheet()" id="uploadBtn" style="display: none;">スプレッドシートに送信</button>
+        </div>
+
+        <div class="results" id="results" style="display: none;">
+            <div class="user-info" id="userInfo"></div>
+            <h3>検査結果</h3>
+            <div id="resultsList"></div>
+            <div id="diagnosisResult"></div>
+            <div class="upload-notice" id="uploadNotice" style="display: none;">
+                <p id="uploadMessage">📤 データを送信中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GAS Web App URLを設定（デプロイ後のURLに置き換えてください）
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzkwF1DWXrD-1sLwvzf3asFZFGuzyzqTZsDhkU4nP8b8GIC-PZatsnPd2nQLkaH8O8v/exec'; // ここを変更
+        
+        const duration = 20000; // 20秒
+        const canvas = document.getElementById('testCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let currentQuestion = 0;
+        let testResults = [];
+        let startTime = null;
+        let running = false;
+        let isTestActive = false;
+        let testStartTime;
+        let questionStartTime;
+        let imagesLoaded = 0;
+        let totalImages = 0;
+        let userName = '';
+        let userAge = '';
+        let currentScreen = 'form';
+        let currentDiagnosis = '';
+        
+        // 複数回答問題のための変数（15-19問目は分割されるため削除）
+        let tempAnswer = null;
+        const multiAnswerQuestions = [];
+
+        const testData = Array.from({length: 24}, (_, i) => {
+            let imageNumber = i + 1;
+            return {
+                question: i + 1,
+                startImage: `No.${String(imageNumber).padStart(2, '0')} 数字なし1.png`,
+                endImage: `No.${String(imageNumber).padStart(2, '0')} 数字あり1.png`,
+                answer: null,
+                responseTime: null,
+                startImg: null,
+                endImg: null
+            };
+        });
+
+        // 入力フィールドの監視
+        document.getElementById('userName').addEventListener('input', checkFormCompletion);
+        document.getElementById('userAge').addEventListener('input', checkFormCompletion);
+
+        function checkFormCompletion() {
+            const nameInput = document.getElementById('userName').value.trim();
+            const ageInput = document.getElementById('userAge').value.trim();
+            const mainBtn = document.getElementById('mainBtn');
+            
+            if (nameInput && ageInput && ageInput >= 1 && ageInput <= 120) {
+                mainBtn.disabled = false;
+                mainBtn.textContent = '次へ';
+            } else {
+                mainBtn.disabled = true;
+                mainBtn.textContent = '次へ';
+            }
+        }
+
+        function preloadImages() {
+            totalImages = testData.length * 2;
+            updateStatus('loading', `画像を読み込み中... (0/${totalImages})`);
+            let hasError = false;
+
+            console.log('===== 画像の読み込み開始 =====');
+            testData.forEach((data, index) => {
+                if (hasError) return;
+                console.log(`問題 ${index + 1}: ${data.startImage}, ${data.endImage}`);
+                
+                data.startImg = new Image();
+                data.startImg.onload = () => { if (!hasError) imageLoaded(); };
+                data.startImg.onerror = () => { if (!hasError) imageError(data.startImage); };
+                data.startImg.src = data.startImage;
+
+                data.endImg = new Image();
+                data.endImg.onload = () => { if (!hasError) imageLoaded(); };
+                data.endImg.onerror = () => { if (!hasError) imageError(data.endImage); };
+                data.endImg.src = data.endImage;
+            });
+            console.log('===== 画像リスト表示完了 =====');
+            
+            function imageLoaded() {
+                imagesLoaded++;
+                updateStatus('loading', `画像を読み込み中... (${imagesLoaded}/${totalImages})`);
+                if (imagesLoaded === totalImages) {
+                    console.log(`✅ 全画像の読み込み完了: ${imagesLoaded}/${totalImages}`);
+                    updateStatus('ready', '検査者情報を入力してください');
+                }
+            }
+
+            function imageError(filename) {
+                hasError = true;
+                console.error(`❌ 画像読み込みエラー: "${filename}"`);
+                updateStatus('error', `エラー: 画像 "${filename}" が見つかりません。`);
+                document.getElementById('mainBtn').disabled = true;
+            }
+        }
+
+        function updateStatus(type, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        function handleMainButton() {
+            const mainBtn = document.getElementById('mainBtn');
+            
+            if (currentScreen === 'form') {
+                if (!validateForm()) return;
+                showWaitingScreen();
+            } else if (currentScreen === 'waiting') {
+                startTest();
+            } else if (currentScreen === 'results') {
+                resetToStart();
+            }
+        }
+
+        function validateForm() {
+            const nameInput = document.getElementById('userName');
+            const ageInput = document.getElementById('userAge');
+            
+            userName = nameInput.value.trim();
+            userAge = ageInput.value.trim();
+            
+            if (!userName) {
+                alert('お名前を入力してください。');
+                nameInput.focus();
+                return false;
+            }
+            
+            if (!userAge || userAge < 1 || userAge > 120) {
+                alert('正しい年齢を入力してください。');
+                ageInput.focus();
+                return false;
+            }
+            
+            return true;
+        }
+
+        function showWaitingScreen() {
+            currentScreen = 'waiting';
+            
+            document.getElementById('inputForm').style.display = 'none';
+            document.getElementById('waitingScreen').style.display = 'block';
+            document.getElementById('displayName').textContent = userName;
+            document.getElementById('displayAge').textContent = userAge;
+            
+            const mainBtn = document.getElementById('mainBtn');
+            mainBtn.textContent = '検査開始';
+            mainBtn.disabled = false;
+            
+            updateStatus('ready', '検査準備完了 - 検査開始ボタンを押してください');
+        }
+
+        function startTest() {
+            if (imagesLoaded < totalImages) return;
+            
+            currentScreen = 'test';
+            
+            console.log('🚀 ====================');
+            console.log('🚀 検査開始');
+            console.log(`🚀 検査者: ${userName} (${userAge}歳)`);
+            console.log(`🚀 開始時刻: ${new Date().toLocaleString('ja-JP')}`);
+            console.log('🚀 ====================');
+            
+            document.getElementById('waitingScreen').style.display = 'none';
+            document.getElementById('testArea').style.display = 'block';
+            document.querySelector('.keypad-section').style.display = 'block';
+            
+            isTestActive = true;
+            currentQuestion = 0;
+            testResults = [];
+            tempAnswer = null;
+            testStartTime = new Date();
+            
+            updateStatus('testing', '検査実行中...');
+            document.getElementById('mainBtn').style.display = 'none';
+            document.getElementById('downloadBtn').style.display = 'none';
+            document.getElementById('uploadBtn').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+            
+            startQuestion();
+        }
+
+        function resetToStart() {
+            currentScreen = 'form';
+            
+            document.querySelector('h1').textContent = 'SPP色覚検査システム';
+            document.getElementById('inputForm').style.display = 'block';
+            document.getElementById('waitingScreen').style.display = 'none';
+            document.getElementById('testArea').style.display = 'none';
+            document.querySelector('.keypad-section').style.display = 'none';
+            document.getElementById('questionNumber').style.display = 'block';
+            document.getElementById('questionNumber').textContent = '問題 1/24';
+            document.querySelector('.image-container').style.display = 'flex';
+            document.querySelector('.progress-container').style.display = 'block';
+            document.getElementById('progressText').style.display = 'block';
+            document.getElementById('questionPrompt').style.display = 'none';
+            document.getElementById('uploadNotice').style.display = 'none';
+            
+            document.getElementById('placeholder').style.display = 'block';
+            document.getElementById('placeholder').textContent = '検査開始前';
+            canvas.style.display = 'none';
+            
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').textContent = '0.0 / 20.0 秒';
+            
+            const mainBtn = document.getElementById('mainBtn');
+            mainBtn.textContent = '次へ';
+            mainBtn.disabled = true;
+            mainBtn.style.display = 'inline-block';
+            document.getElementById('downloadBtn').style.display = 'none';
+            document.getElementById('uploadBtn').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+            
+            document.getElementById('userName').value = '';
+            document.getElementById('userAge').value = '';
+            
+            updateStatus('ready', '検査者情報を入力してください');
+            
+            document.querySelector('.container').style.textAlign = 'center';
+            
+            isTestActive = false;
+            running = false;
+            currentQuestion = 0;
+            testResults = [];
+            tempAnswer = null;
+            currentDiagnosis = '';
+        }
+
+        function startQuestion() {
+            if (currentQuestion >= 24) {
+                completeTest();
+                return;
+            }
+            
+            document.getElementById('questionPrompt').style.display = 'none';
+            questionStartTime = new Date();
+            
+            const questionData = testData[currentQuestion];
+            document.getElementById('questionNumber').textContent = `問題 ${currentQuestion + 1}/24`;
+            
+            // コンソールに画像ファイル名を表示
+            console.log(`========== 問題 ${currentQuestion + 1} ==========`);
+            console.log(`開始画像: ${questionData.startImage}`);
+            console.log(`終了画像: ${questionData.endImage}`);
+            console.log(`================================`);
+            
+            document.getElementById('placeholder').style.display = 'none';
+            canvas.style.display = 'block';
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(questionData.startImg, 0, 0, canvas.width, canvas.height);
+            
+            updateProgress(0);
+            
+            setTimeout(() => {
+                if(isTestActive) startMorphing(questionData);
+            }, 1000);
+        }
+
+        function startMorphing(questionData) {
+            if (running) return;
+            running = true;
+            startTime = performance.now();
+            
+            requestAnimationFrame(drawFrame);
+            
+            function drawFrame(time) {
+                if (!running) return;
+                const elapsed = time - startTime;
+                const ratio = Math.min(elapsed / duration, 1);
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1;
+                ctx.drawImage(questionData.startImg, 0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = ratio;
+                ctx.drawImage(questionData.endImg, 0, 0, canvas.width, canvas.height);
+                updateProgress(elapsed / 1000);
+                
+                if (ratio < 1) {
+                    requestAnimationFrame(drawFrame);
+                } else {
+                    running = false;
+                    ctx.globalAlpha = 1;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(questionData.endImg, 0, 0, canvas.width, canvas.height);
+                }
+            }
+        }
+
+        function updateProgress(seconds) {
+            const percentage = (seconds / 20) * 100;
+            document.getElementById('progressBar').style.width = `${percentage}%`;
+            document.getElementById('progressText').textContent = `${seconds.toFixed(1)} / 20.0 秒`;
+        }
+
+        function selectAnswer(answer) {
+            if (!isTestActive) return;
+
+            const currentQNumber = currentQuestion + 1;
+            const isMulti = multiAnswerQuestions.includes(currentQNumber);
+            const promptDiv = document.getElementById('questionPrompt');
+
+            if (isMulti && tempAnswer === null) {
+                tempAnswer = answer;
+                promptDiv.textContent = '2つ目の答えを選んでください (なければ「わからない」)';
+                promptDiv.style.display = 'block';
+                return;
+            }
+
+            promptDiv.style.display = 'none';
+            let finalAnswer;
+            if (isMulti) {
+                finalAnswer = [tempAnswer, answer].sort((a,b) => String(a).localeCompare(String(b)));
+                tempAnswer = null;
+            } else {
+                finalAnswer = answer;
+            }
+            
+            running = false;
+
+            // 回答をコンソールに記録
+            console.log(`📝 問題 ${currentQNumber}: 回答 = ${Array.isArray(finalAnswer) ? finalAnswer.join(', ') : finalAnswer}`);
+
+            testResults.push({
+                question: currentQNumber,
+                answer: finalAnswer,
+                responseTime: new Date() - questionStartTime
+            });
+            
+            currentQuestion++;
+            startQuestion();
+        }
+
+        function completeTest() {
+            isTestActive = false;
+            running = false;
+            currentScreen = 'results';
+            
+            console.log('✅ ====================');
+            console.log('✅ 検査完了');
+            console.log(`✅ 終了時刻: ${new Date().toLocaleString('ja-JP')}`);
+            console.log('✅ ====================');
+            
+            document.querySelector('h1').textContent = 'SPP検査';
+            document.getElementById('questionNumber').style.display = 'none';
+            document.querySelector('.image-container').style.display = 'none';
+            document.querySelector('.progress-container').style.display = 'none';
+            document.getElementById('progressText').style.display = 'none';
+            document.querySelector('.keypad-section').style.display = 'none';
+            
+            updateStatus('complete', '検査完了');
+            displayResults();
+            currentDiagnosis = calculateDiagnosis(testResults);
+            const researchData = checkResearchAnswers(testResults);
+            
+            // 診断結果をコンソールに表示
+            console.log('📊 ====================');
+            console.log('📊 診断結果:', currentDiagnosis);
+            console.log('📊 ====================');
+            document.getElementById('diagnosisResult').innerHTML = `
+                <div style="margin-top: 20px; padding: 20px; background: #f0f8ff; border-radius: 10px;">
+                    <h3 style="color: #1565C0; margin-bottom: 10px;">診断結果</h3>
+                    <p style="font-size: 1.3em; font-weight: bold; color: ${currentDiagnosis === '正常色覚' ? '#4CAF50' : '#FF6B6B'};">
+                        ${currentDiagnosis}
+                    </p>
+                    <p style="color: #666; margin-top: 10px;">
+                        ※この診断は問題5〜14の正解数（8問以上で正常）に基づいています。
+                    </p>
+                    <p style="color: #666;">
+                        ※問題15〜24は研究用データとして記録されますが、診断には使用されません。
+                    </p>
+                </div>
+            `;
+            
+            document.getElementById('downloadBtn').style.display = 'inline-block';
+            document.getElementById('uploadBtn').style.display = 'inline-block';
+            
+            document.getElementById('mainBtn').style.display = 'inline-block';
+            document.getElementById('mainBtn').textContent = '再検査';
+        }
+        
+        function displayResults() {
+            const resultsDiv = document.getElementById('results');
+            const resultsList = document.getElementById('resultsList');
+            const userInfo = document.getElementById('userInfo');
+            
+            userInfo.innerHTML = `
+                <h4>検査者情報</h4>
+                <p><strong>お名前:</strong> ${userName}</p>
+                <p><strong>年齢:</strong> ${userAge}歳</p>
+                <p><strong>検査日時:</strong> ${testStartTime.toLocaleString('ja-JP')}</p>
+            `;
+            
+            resultsList.innerHTML = '';
+            
+            testResults.forEach(result => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                const answerText = Array.isArray(result.answer) ? result.answer.join(', ') : result.answer;
+                resultItem.innerHTML = `
+                    <span>問題 ${result.question}</span>
+                    <span>回答: ${answerText}</span>
+                    <span>応答時間: ${(result.responseTime / 1000).toFixed(1)}秒</span>
+                `;
+                resultsList.appendChild(resultItem);
+            });
+            resultsDiv.style.display = 'block';
+        }
+
+        const diagnosisRules = {
+            5: { normal: [[3]], pd: [[8]] },
+            6: { normal: [[2]], pd: [[9]] },
+            7: { normal: [[4]], pd: [['わからない']] },
+            8: { normal: [[7]], pd: [[4]] },
+            9: { normal: [[8]], pd: [[7]] },
+            10: { normal: [[4]], pd: [[3], ['わからない']] },
+            11: { normal: [[3]], pd: [[8]] },
+            12: { normal: [[7]], pd: [[5], ['わからない']] },
+            13: { normal: [[8]], pd: [['わからない']] },
+            14: { normal: [[3]], pd: [[6], ['わからない']] },
+            // 15-24問目は診断には使用しないが、正解を記録する（研究用）
+            15: { correct: [[8]] },
+            16: { correct: [[3]] },
+            17: { correct: [[5]] },
+            18: { correct: [[7]] },
+            19: { correct: [[4]] },
+            20: { correct: [[8]] },
+            21: { correct: [[9]] },
+            22: { correct: [[4]] },
+            23: { correct: [[3]] },
+            24: { correct: [[5]] }
+        };
+
+        function calculateDiagnosis(results) {
+            // 新しい診断ロジック：問題5-14の正解数で判定
+            let correctCount = 0;
+            
+            results.forEach(result => {
+                const q = result.question;
+                // 問題5-14のみを診断対象とする
+                if (q >= 5 && q <= 14) {
+                    const userAnswer = Array.isArray(result.answer) ? [...result.answer] : [result.answer];
+                    userAnswer.sort((a,b) => String(a).localeCompare(String(b)));
+                    const userAnswerJSON = JSON.stringify(userAnswer);
+                    
+                    // 各問題の正常色覚の正解をチェック
+                    if (diagnosisRules[q] && diagnosisRules[q].normal) {
+                        const validAnswers = diagnosisRules[q].normal;
+                        for (const valid of validAnswers) {
+                            const sortedValid = [...valid].sort((a,b) => String(a).localeCompare(String(b)));
+                            if (userAnswerJSON === JSON.stringify(sortedValid)) {
+                                correctCount++;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 8問以上正解で正常色覚、それ以外は色覚異常の疑い
+            if (correctCount >= 8) {
+                return "正常色覚";
+            } else {
+                return "色覚異常の疑いがあります";
+            }
+        }
+        
+        // 研究用データ：15-24問目の正解判定（診断には使用しない）
+        function checkResearchAnswers(results) {
+            const researchResults = [];
+            results.forEach(result => {
+                const q = result.question;
+                if (q >= 15 && q <= 24) {
+                    const userAnswer = Array.isArray(result.answer) ? [...result.answer] : [result.answer];
+                    const userAnswerStr = userAnswer.join(',');
+                    let isCorrect = false;
+                    
+                    if (diagnosisRules[q] && diagnosisRules[q].correct) {
+                        const correctAnswers = diagnosisRules[q].correct;
+                        for (const correct of correctAnswers) {
+                            if (userAnswerStr === correct.join(',')) {
+                                isCorrect = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    researchResults.push({
+                        question: q,
+                        answer: userAnswerStr,
+                        correct: isCorrect,
+                        responseTime: result.responseTime
+                    });
+                }
+            });
+            return researchResults;
+        }
+
+        async function uploadToSpreadsheet() {
+            const uploadBtn = document.getElementById('uploadBtn');
+            const uploadNotice = document.getElementById('uploadNotice');
+            const uploadMessage = document.getElementById('uploadMessage');
+            
+            // ボタンを無効化
+            uploadBtn.disabled = true;
+            uploadNotice.style.display = 'block';
+            uploadNotice.className = 'upload-notice';
+            uploadMessage.textContent = '📤 データを送信中...';
+            updateStatus('uploading', 'スプレッドシートに送信中...');
+            
+            try {
+                const data = {
+                    userName: userName,
+                    userAge: userAge,
+                    testDateTime: testStartTime.toLocaleString('ja-JP'),
+                    diagnosis: currentDiagnosis,
+                    results: testResults
+                };
+                
+                console.log('送信データ:', data); // デバッグ用
+                
+                // mode: 'no-cors'を削除し、通常のfetchを使用
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain', // application/jsonからtext/plainに変更
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                // レスポンスをテキストとして取得
+                const result = await response.text();
+                console.log('レスポンス:', result); // デバッグ用
+                
+                uploadMessage.textContent = '✅ データが正常に送信されました';
+                updateStatus('success', 'データ送信完了');
+                
+                setTimeout(() => {
+                    uploadBtn.disabled = false;
+                    uploadNotice.style.display = 'none';
+                    updateStatus('complete', '検査完了');
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                uploadNotice.className = 'upload-notice error';
+                uploadMessage.textContent = '❌ 送信エラー: ブラウザのコンソールを確認してください';
+                updateStatus('error', 'データ送信に失敗しました');
+                uploadBtn.disabled = false;
+                
+                // より詳細なエラー情報をコンソールに出力
+                console.error('詳細なエラー情報:', {
+                    message: error.message,
+                    stack: error.stack,
+                    GAS_URL: GAS_URL
+                });
+            }
+        }
+
+        function downloadResults() {
+            const diagnosis = calculateDiagnosis(testResults);
+            
+            let content = '========================================\n';
+            content += 'SPP色覚検査結果\n';
+            content += '========================================\n\n';
+            
+            content += '【検査者情報】\n';
+            content += `お名前: ${userName}\n`;
+            content += `年齢: ${userAge}歳\n`;
+            content += `検査日時: ${testStartTime.toLocaleString('ja-JP')}\n\n`;
+            
+            content += '【診断結果】\n';
+            content += `${diagnosis}\n`;
+            content += `（問題5-14の正解数に基づく判定）\n\n`;
+            
+            content += '【回答詳細】\n';
+            content += '----------------------------------------\n';
+            
+            testResults.forEach(result => {
+                const answerText = Array.isArray(result.answer) ? result.answer.join(', ') : result.answer;
+                content += `問題 ${String(result.question).padStart(2, ' ')}: `;
+                content += `回答 = ${answerText.toString().padEnd(12, ' ')} `;
+                content += `応答時間 = ${(result.responseTime / 1000).toFixed(1)}秒\n`;
+            });
+            
+            content += '----------------------------------------\n\n';
+            content += '※この結果は参考情報です。\n';
+            content += '※正確な診断は眼科医にご相談ください。\n';
+            
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SPP検査結果_${userName}_${testStartTime.toISOString().slice(0,10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (!isTestActive) return;
+            const key = event.key;
+            if (key >= '1' && key <= '9') {
+                selectAnswer(parseInt(key));
+            } else if (key === '0' || key === 'Enter' || key.toLowerCase() === 'u') {
+                selectAnswer('わからない');
+            }
+        });
+
+        // 画像の読み込みを開始
+        preloadImages();
+    </script>
+</body>
+</html>
