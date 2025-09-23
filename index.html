@@ -425,15 +425,15 @@
             <div class="keypad-section">
                 <div class="question-prompt" id="questionPrompt"></div>
                 <div class="keypad">
-                    <button class="key" onclick="selectAnswer(1)">1</button>
-                    <button class="key" onclick="selectAnswer(2)">2</button>
-                    <button class="key" onclick="selectAnswer(3)">3</button>
-                    <button class="key" onclick="selectAnswer(4)">4</button>
-                    <button class="key" onclick="selectAnswer(5)">5</button>
-                    <button class="key" onclick="selectAnswer(6)">6</button>
-                    <button class="key" onclick="selectAnswer(7)">7</button>
-                    <button class="key" onclick="selectAnswer(8)">8</button>
-                    <button class="key" onclick="selectAnswer(9)">9</button>
+                    <button class="key" onclick="selectAnswer('1')">1</button>
+                    <button class="key" onclick="selectAnswer('2')">2</button>
+                    <button class="key" onclick="selectAnswer('3')">3</button>
+                    <button class="key" onclick="selectAnswer('4')">4</button>
+                    <button class="key" onclick="selectAnswer('5')">5</button>
+                    <button class="key" onclick="selectAnswer('6')">6</button>
+                    <button class="key" onclick="selectAnswer('7')">7</button>
+                    <button class="key" onclick="selectAnswer('8')">8</button>
+                    <button class="key" onclick="selectAnswer('9')">9</button>
                     <button class="key unknown" onclick="selectAnswer('わからない')">わからない</button>
                 </div>
             </div>
@@ -478,12 +478,17 @@
         let currentScreen = 'form';
         let currentDiagnosis = '';
         
-        // 複数回答問題のための変数（15-19問目は分割されるため削除）
-        let tempAnswer = null;
-        const multiAnswerQuestions = [];
+        // 複数回答機能は完全に削除（全て単一回答）
+        // const multiAnswerQuestions = [];  // 削除
+        // let tempAnswer = null;  // 削除
 
         const testData = Array.from({length: 24}, (_, i) => {
             let imageNumber = i + 1;
+            // 15問目以降の画像番号を調整（同じ画像を2回使用）
+            if (i >= 15) {
+                // 15-16: 元の15番画像、17-18: 元の16番画像、19-20: 元の17番画像、21-22: 元の18番画像、23-24: 元の19番画像
+                imageNumber = Math.floor((i - 15) / 2) + 15;
+            }
             return {
                 question: i + 1,
                 startImage: `No.${String(imageNumber).padStart(2, '0')} 数字なし1.png`,
@@ -626,7 +631,7 @@
             isTestActive = true;
             currentQuestion = 0;
             testResults = [];
-            tempAnswer = null;
+            // tempAnswer = null;  // 削除（複数回答機能は使用しない）
             testStartTime = new Date();
             
             updateStatus('testing', '検査実行中...');
@@ -680,7 +685,7 @@
             running = false;
             currentQuestion = 0;
             testResults = [];
-            tempAnswer = null;
+            // tempAnswer = null;  // 削除（複数回答機能は使用しない）
             currentDiagnosis = '';
         }
 
@@ -753,35 +758,29 @@
 
         function selectAnswer(answer) {
             if (!isTestActive) return;
-
-            const currentQNumber = currentQuestion + 1;
-            const isMulti = multiAnswerQuestions.includes(currentQNumber);
-            const promptDiv = document.getElementById('questionPrompt');
-
-            if (isMulti && tempAnswer === null) {
-                tempAnswer = answer;
-                promptDiv.textContent = '2つ目の答えを選んでください (なければ「わからない」)';
-                promptDiv.style.display = 'block';
+            
+            // 既に回答済みの場合は処理しない（二重クリック防止）
+            if (testResults.some(r => r.question === currentQuestion + 1)) {
+                console.warn(`⚠️ 問題 ${currentQuestion + 1} は既に回答済みです`);
                 return;
             }
 
+            const currentQNumber = currentQuestion + 1;
+            
+            // 全て単一回答として処理（複数回答は完全に削除）
+            const promptDiv = document.getElementById('questionPrompt');
             promptDiv.style.display = 'none';
-            let finalAnswer;
-            if (isMulti) {
-                finalAnswer = [tempAnswer, answer].sort((a,b) => String(a).localeCompare(String(b)));
-                tempAnswer = null;
-            } else {
-                finalAnswer = answer;
-            }
+            
+            let finalAnswer = answer;  // 常に単一の回答として扱う
             
             running = false;
 
             // 回答をコンソールに記録
-            console.log(`📝 問題 ${currentQNumber}: 回答 = ${Array.isArray(finalAnswer) ? finalAnswer.join(', ') : finalAnswer}`);
+            console.log(`📝 問題 ${currentQNumber}: 回答 = ${finalAnswer}`);
 
             testResults.push({
                 question: currentQNumber,
-                answer: finalAnswer,
+                answer: finalAnswer,  // 配列ではなく単一値
                 responseTime: new Date() - questionStartTime
             });
             
@@ -854,7 +853,8 @@
             testResults.forEach(result => {
                 const resultItem = document.createElement('div');
                 resultItem.className = 'result-item';
-                const answerText = Array.isArray(result.answer) ? result.answer.join(', ') : result.answer;
+                // 単一回答として表示（配列チェックは不要）
+                const answerText = result.answer;
                 resultItem.innerHTML = `
                     <span>問題 ${result.question}</span>
                     <span>回答: ${answerText}</span>
@@ -866,27 +866,27 @@
         }
 
         const diagnosisRules = {
-            5: { normal: [[3]], pd: [[8]] },
-            6: { normal: [[2]], pd: [[9]] },
-            7: { normal: [[4]], pd: [['わからない']] },
-            8: { normal: [[7]], pd: [[4]] },
-            9: { normal: [[8]], pd: [[7]] },
-            10: { normal: [[4]], pd: [[3], ['わからない']] },
-            11: { normal: [[3]], pd: [[8]] },
-            12: { normal: [[7]], pd: [[5], ['わからない']] },
-            13: { normal: [[8]], pd: [['わからない']] },
-            14: { normal: [[3]], pd: [[6], ['わからない']] },
+            5: { normal: [['3']], pd: [['8']] },
+            6: { normal: [['2']], pd: [['9']] },
+            7: { normal: [['4']], pd: [['わからない']] },
+            8: { normal: [['7']], pd: [['4']] },
+            9: { normal: [['8']], pd: [['7']] },
+            10: { normal: [['4']], pd: [['3'], ['わからない']] },
+            11: { normal: [['3']], pd: [['8']] },
+            12: { normal: [['7']], pd: [['5'], ['わからない']] },
+            13: { normal: [['8']], pd: [['わからない']] },
+            14: { normal: [['3']], pd: [['6'], ['わからない']] },
             // 15-24問目は診断には使用しないが、正解を記録する（研究用）
-            15: { correct: [[8]] },
-            16: { correct: [[3]] },
-            17: { correct: [[5]] },
-            18: { correct: [[7]] },
-            19: { correct: [[4]] },
-            20: { correct: [[8]] },
-            21: { correct: [[9]] },
-            22: { correct: [[4]] },
-            23: { correct: [[3]] },
-            24: { correct: [[5]] }
+            15: { correct: [['8']] },
+            16: { correct: [['3']] },
+            17: { correct: [['5']] },
+            18: { correct: [['7']] },
+            19: { correct: [['4']] },
+            20: { correct: [['8']] },
+            21: { correct: [['9']] },
+            22: { correct: [['4']] },
+            23: { correct: [['3']] },
+            24: { correct: [['5']] }
         };
 
         function calculateDiagnosis(results) {
@@ -897,16 +897,15 @@
                 const q = result.question;
                 // 問題5-14のみを診断対象とする
                 if (q >= 5 && q <= 14) {
-                    const userAnswer = Array.isArray(result.answer) ? [...result.answer] : [result.answer];
-                    userAnswer.sort((a,b) => String(a).localeCompare(String(b)));
+                    // 単一回答として処理（配列化しない）
+                    const userAnswer = [result.answer];  // 単一値を配列に入れる（比較のため）
                     const userAnswerJSON = JSON.stringify(userAnswer);
                     
                     // 各問題の正常色覚の正解をチェック
                     if (diagnosisRules[q] && diagnosisRules[q].normal) {
                         const validAnswers = diagnosisRules[q].normal;
                         for (const valid of validAnswers) {
-                            const sortedValid = [...valid].sort((a,b) => String(a).localeCompare(String(b)));
-                            if (userAnswerJSON === JSON.stringify(sortedValid)) {
+                            if (userAnswerJSON === JSON.stringify(valid)) {
                                 correctCount++;
                                 break;
                             }
@@ -929,14 +928,14 @@
             results.forEach(result => {
                 const q = result.question;
                 if (q >= 15 && q <= 24) {
-                    const userAnswer = Array.isArray(result.answer) ? [...result.answer] : [result.answer];
-                    const userAnswerStr = userAnswer.join(',');
+                    // 単一回答として処理
+                    const userAnswer = String(result.answer);  // 文字列として扱う
                     let isCorrect = false;
                     
                     if (diagnosisRules[q] && diagnosisRules[q].correct) {
                         const correctAnswers = diagnosisRules[q].correct;
                         for (const correct of correctAnswers) {
-                            if (userAnswerStr === correct.join(',')) {
+                            if (userAnswer === String(correct[0])) {  // 正解の最初の要素と比較
                                 isCorrect = true;
                                 break;
                             }
@@ -945,7 +944,7 @@
                     
                     researchResults.push({
                         question: q,
-                        answer: userAnswerStr,
+                        answer: userAnswer,  // 単一値として保存
                         correct: isCorrect,
                         responseTime: result.responseTime
                     });
@@ -967,15 +966,24 @@
             updateStatus('uploading', 'スプレッドシートに送信中...');
             
             try {
+                // API仕様に準拠したデータ構造（全て文字列として送信）
                 const data = {
-                    userName: userName,
-                    userAge: userAge,
+                    userName: String(userName),
+                    userAge: String(userAge),
                     testDateTime: testStartTime.toLocaleString('ja-JP'),
-                    diagnosis: currentDiagnosis,
-                    results: testResults
+                    diagnosis: String(currentDiagnosis),
+                    results: testResults.map(r => ({
+                        question: r.question,
+                        answer: String(r.answer),  // 文字列として送信
+                        responseTime: r.responseTime
+                    }))
                 };
                 
                 console.log('送信データ:', data); // デバッグ用
+                console.log('データ型チェック:');
+                data.results.forEach((r, i) => {
+                    console.log(`  問題${r.question}: answer="${r.answer}" (型: ${typeof r.answer})`);
+                });
                 
                 // mode: 'no-cors'を削除し、通常のfetchを使用
                 const response = await fetch(GAS_URL, {
@@ -1035,9 +1043,10 @@
             content += '----------------------------------------\n';
             
             testResults.forEach(result => {
-                const answerText = Array.isArray(result.answer) ? result.answer.join(', ') : result.answer;
+                // 単一回答として処理
+                const answerText = result.answer;
                 content += `問題 ${String(result.question).padStart(2, ' ')}: `;
-                content += `回答 = ${answerText.toString().padEnd(12, ' ')} `;
+                content += `回答 = ${String(answerText).padEnd(12, ' ')} `;
                 content += `応答時間 = ${(result.responseTime / 1000).toFixed(1)}秒\n`;
             });
             
@@ -1060,7 +1069,8 @@
             if (!isTestActive) return;
             const key = event.key;
             if (key >= '1' && key <= '9') {
-                selectAnswer(parseInt(key));
+                // 数字は文字列として送信（API仕様に準拠）
+                selectAnswer(key);  // parseInt()を削除し、文字列のまま送信
             } else if (key === '0' || key === 'Enter' || key.toLowerCase() === 'u') {
                 selectAnswer('わからない');
             }
